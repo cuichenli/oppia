@@ -1729,7 +1729,7 @@ class LintChecksManager( # pylint: disable=inherit-non-class
                 be checked for in the file.
             filepath: str. The path to the file to be linted.
             failed: bool. Status of failure of the check.
-
+            file_cache: FileCache. shared global variable for reading files.
         Returns:
             bool. The failure status of the check.
         """
@@ -1767,6 +1767,14 @@ class LintChecksManager( # pylint: disable=inherit-non-class
             self, all_filepaths, global_stdout, process_manager, file_cache):
         """This function checks that all files contain the mandatory
         patterns.
+
+        Args:
+            all_filepaths: list(str). The list of the files to be checked.
+            global_stdout: multiprocessing.Manager.list(string_io). Shared
+            global variable for capture stdout.
+            process_manager: multiprocessing.Manager.dict. Shared variable for
+            storing messages.
+            file_cache: FileCache. Shared global variable for reading files.
         """
         if self.verbose_mode_enabled:
             python_utils.PRINT('Starting mandatory patterns check')
@@ -1802,7 +1810,17 @@ class LintChecksManager( # pylint: disable=inherit-non-class
     def _check_bad_patterns(
             self, origin_all_filepaths, global_stdout, process_manager,
             file_cache):
-        """This function is used for detecting bad patterns."""
+        """This function is used for detecting bad patterns.
+
+        Args:
+            origin_all_filepaths: list(str). The list of the files to
+            be checked.
+            global_stdout: multiprocessing.Manager.list(string_io). Shared
+            global variable for capture stdout.
+            process_manager: multiprocessing.Manager.dict. Shared variable for
+            storing messages.
+            file_cache: FileCache. Shared global variable for reading files.
+        """
         if self.verbose_mode_enabled:
             python_utils.PRINT('Starting Pattern Checks')
             python_utils.PRINT('----------------------------------------')
@@ -1873,9 +1891,10 @@ class LintChecksManager( # pylint: disable=inherit-non-class
         process_manager['bad_pattern'] = summary_messages
         global_stdout.append(stdout)
 
-    def _check_patterns(self, all_files):
+    def _check_patterns(self):
         """Run checks relate to bad patterns."""
-        args = (all_files, _STDOUT_LIST, self.process_manager, FILE_CACHE)
+        args = (
+            self.all_filepaths, _STDOUT_LIST, self.process_manager, FILE_CACHE)
         methods = [
             (self._check_bad_patterns, args),
             (self._check_mandatory_patterns, args)]
@@ -1888,7 +1907,7 @@ class LintChecksManager( # pylint: disable=inherit-non-class
         Returns:
             all_messages: str. All the messages returned by the lint checks.
         """
-        self._check_patterns(self.all_filepaths)
+        self._check_patterns()
         mandatory_patterns_messages = self.process_manager['mandatory']
         pattern_messages = self.process_manager['bad_pattern']
         return (
@@ -2037,6 +2056,13 @@ class JsTsLintChecksManager(LintChecksManager):
         """Checks if the changes made include extra js files in core
         or extensions folder which are not specified in
         build.JS_FILEPATHS_NOT_TO_BUILD.
+
+        Args:
+            js_files_to_check: list(str). The list of the files to be checked.
+            global_stdout: multiprocessing.Manager.list(string_io). Shared
+            global variable for capture stdout.
+            process_manager: multiprocessing.Manager.dict. Shared variable for
+            storing messages.
         """
         if self.verbose_mode_enabled:
             python_utils.PRINT('Starting extra js files check')
@@ -2080,6 +2106,13 @@ class JsTsLintChecksManager(LintChecksManager):
         """This function ensures that all JS/TS files have exactly
         one component and and that the name of the component
         matches the filename.
+
+       Args:
+            all_filepaths: list(str). The list of the files to be checked.
+            global_stdout: multiprocessing.Manager.list(string_io). Shared
+            global variable for capture stdout.
+            process_manager: multiprocessing.Manager.dict. Shared variable for
+            storing messages.
         """
         if self.verbose_mode_enabled:
             python_utils.PRINT('Starting js component name and count check')
@@ -2137,6 +2170,13 @@ class JsTsLintChecksManager(LintChecksManager):
             self, all_filepaths, global_stdout, process_manager):
         """This function checks that all directives have an explicit
         scope: {} and it should not be scope: true.
+
+        Args:
+            all_filepaths: list(str). The list of the files to be checked.
+            global_stdout: multiprocessing.Manager.list(string_io). Shared
+            global variable for capture stdout.
+            process_manager: multiprocessing.Manager.dict. Shared variable for
+            storing messages.
         """
         if self.verbose_mode_enabled:
             python_utils.PRINT('Starting directive scope check')
@@ -2275,6 +2315,13 @@ class JsTsLintChecksManager(LintChecksManager):
         imported in the controllers/directives/factories in JS
         files are in following pattern: dollar imports, regular
         imports, and constant imports, all in sorted order.
+
+        Args:
+            all_filepaths: list(str). The list of the files to be checked.
+            global_stdout: multiprocessing.Manager.list(string_io). Shared
+            global variable for capture stdout.
+            process_manager: multiprocessing.Manager.dict. Shared variable for
+            storing messages.
         """
         if self.verbose_mode_enabled:
             python_utils.PRINT('Starting sorted dependencies check')
@@ -2371,6 +2418,13 @@ class JsTsLintChecksManager(LintChecksManager):
         """This function checks whether the line breaks between the dependencies
         listed in the controller of a directive or service exactly match those
         between the arguments of the controller function.
+
+        Args:
+            all_filepaths: list(str). The list of the files to be checked.
+            global_stdout: multiprocessing.Manager.list(string_io). Shared
+            global variable for capture stdout.
+            process_manager: multiprocessing.Manager.dict. Shared variable for
+            storing messages.
         """
         if self.verbose_mode_enabled:
             python_utils.PRINT(
@@ -2763,6 +2817,13 @@ class OtherLintChecksManager(LintChecksManager):
             self, py_filepaths, global_stdout, process_manager):
         """This function is used to check that each file
         has imports placed in alphabetical order.
+
+        Args:
+            py_filepaths: list(str). The list of the files to be checked.
+            global_stdout: multiprocessing.Manager.list(string_io). Shared
+            global variable for capture stdout.
+            process_manager: multiprocessing.Manager.dict. Shared variable for
+            storing messages.
         """
         if self.verbose_mode_enabled:
             python_utils.PRINT('Starting import-order checks')
@@ -2802,7 +2863,6 @@ class OtherLintChecksManager(LintChecksManager):
         process_manager['import'] = summary_messages
         global_stdout.append(stdout)
 
-
     def _check_import(self):
         """Run checks relates to import order."""
         arg = (self.py_filepaths, _STDOUT_LIST, self.process_manager)
@@ -2823,6 +2883,13 @@ class OtherLintChecksManager(LintChecksManager):
         """This function ensures that docstrings end in a period and the arg
         order in the function definition matches the order in the doc string.
 
+        Args:
+            py_filepaths: list(str). The list of the files to be checked.
+            global_stdout: multiprocessing.Manager.list(string_io). Shared
+            global variable for capture stdout.
+            process_manager: multiprocessing.Manager.dict. Shared variable for
+            storing messages.
+            file_cache: FileCache. Shared global variable for reading files.
         Returns:
             summary_messages: list(str). Summary of messages generated by the
             check.
@@ -2979,7 +3046,16 @@ class OtherLintChecksManager(LintChecksManager):
 
     def _check_comments(
             self, py_filepaths, global_stdout, process_manager, file_cache):
-        """This function ensures that comments follow correct style."""
+        """This function ensures that comments follow correct style.
+
+        Args:
+            py_filepaths: list(str). The list of the files to be checked.
+            global_stdout: multiprocessing.Manager.list(string_io). Shared
+            global variable for capture stdout.
+            process_manager: multiprocessing.Manager.dict. Shared variable for
+            storing messages.
+            file_cache: FileCache. Shared global variable for reading files.
+        """
         if self.verbose_mode_enabled:
             python_utils.PRINT('Starting comment checks')
             python_utils.PRINT('----------------------------------------')
@@ -3057,7 +3133,6 @@ class OtherLintChecksManager(LintChecksManager):
                 summary_messages.append(summary_message)
         process_manager['comments'] = summary_messages
         global_stdout.append(stdout)
-
 
     def _check_html_tags_and_attributes(self, debug=False):
         """This function checks the indentation of lines in HTML files."""
@@ -3281,7 +3356,7 @@ def main(args=None):
         _FILES['.js'], _FILES['.ts'], _FILES['.py'], _FILES['.html'],
         _FILES['.css'], verbose_mode_enabled)
     code_owner_message = _check_codeowner_file(verbose_mode_enabled)
-    # Pylint requires to provide paramter "this_bases" and "d", guess due to
+    # Pylint requires to provide paramater "this_bases" and "d", guess due to
     # meta class.
     js_ts_lint_checks_manager = JsTsLintChecksManager( # pylint: disable=no-value-for-parameter
         verbose_mode_enabled)
