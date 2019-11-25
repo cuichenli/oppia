@@ -63,11 +63,11 @@ import threading
 import time
 
 # Install third party dependencies before proceeding.
+from scripts import build
+from scripts import docstrings_checker
 from scripts import install_third_party_libs
-from scripts import build # isort:skip
-from scripts import docstrings_checker  # isort:skip
-
 # pylint: disable=wrong-import-position
+
 import python_utils  # isort:skip
 
 _PARSER = argparse.ArgumentParser()
@@ -1562,7 +1562,7 @@ def _check_codeowner_file(verbose_mode_enabled):
         python_utils.PRINT('Starting CODEOWNERS file check')
         python_utils.PRINT('----------------------------------------')
 
-    with _redirect_stdout(sys.stdout):
+    with _redirect_stdout(_TARGET_STDOUT):
         failed = False
         summary_messages = []
         # Checks whether every pattern in the CODEOWNERS file matches at
@@ -1721,7 +1721,7 @@ class LintChecksManager( # pylint: disable=inherit-non-class
             p.join()
 
     def _check_for_mandatory_pattern_in_file(
-            self, pattern_list, filepath, failed):
+            self, pattern_list, filepath, failed, file_cache):
         """Checks for a given mandatory pattern in a file.
 
         Args:
@@ -1736,7 +1736,7 @@ class LintChecksManager( # pylint: disable=inherit-non-class
         # This boolean list keeps track of the regex matches
         # found in the file.
         pattern_found_list = []
-        file_content = FILE_CACHE.readlines(filepath)
+        file_content = file_cache.readlines(filepath)
         for index, regexp_to_check in enumerate(
                 pattern_list):
             if (any([filepath.endswith(
@@ -1764,7 +1764,7 @@ class LintChecksManager( # pylint: disable=inherit-non-class
         return failed
 
     def _check_mandatory_patterns(
-            self, all_filepaths, global_stdout, process_manager):
+            self, all_filepaths, global_stdout, process_manager, file_cache):
         """This function checks that all files contain the mandatory
         patterns.
         """
@@ -1781,7 +1781,7 @@ class LintChecksManager( # pylint: disable=inherit-non-class
             for filepath in all_filepaths:
                 for pattern_list in sets_of_patterns_to_match:
                     failed = self._check_for_mandatory_pattern_in_file(
-                        pattern_list, filepath, failed)
+                        pattern_list, filepath, failed, file_cache)
 
             if failed:
                 summary_message = (
@@ -1800,7 +1800,8 @@ class LintChecksManager( # pylint: disable=inherit-non-class
         global_stdout.append(stdout)
 
     def _check_bad_patterns(
-            self, origin_all_filepaths, global_stdout, process_manager):
+            self, origin_all_filepaths, global_stdout, process_manager,
+            file_cache):
         """This function is used for detecting bad patterns."""
         if self.verbose_mode_enabled:
             python_utils.PRINT('Starting Pattern Checks')
@@ -1819,7 +1820,7 @@ class LintChecksManager( # pylint: disable=inherit-non-class
         stdout = python_utils.string_io()
         with _redirect_stdout(stdout):
             for filepath in all_filepaths:
-                file_content = FILE_CACHE.read(filepath)
+                file_content = file_cache.read(filepath)
                 total_files_checked += 1
                 for pattern in BAD_PATTERNS:
                     if (pattern in file_content and
@@ -1872,10 +1873,9 @@ class LintChecksManager( # pylint: disable=inherit-non-class
         process_manager['bad_pattern'] = summary_messages
         global_stdout.append(stdout)
 
-    def _check_patterns(self):
+    def _check_patterns(self, all_files):
         """Run checks relate to bad patterns."""
-        args = (
-            (_FILES['.js'] + _FILES['.ts']), _STDOUT_LIST, self.process_manager)
+        args = (all_files, _STDOUT_LIST, self.process_manager, FILE_CACHE)
         methods = [
             (self._check_bad_patterns, args),
             (self._check_mandatory_patterns, args)]
@@ -1888,7 +1888,7 @@ class LintChecksManager( # pylint: disable=inherit-non-class
         Returns:
             all_messages: str. All the messages returned by the lint checks.
         """
-        self._check_patterns()
+        self._check_patterns(self.all_filepaths)
         mandatory_patterns_messages = self.process_manager['mandatory']
         pattern_messages = self.process_manager['bad_pattern']
         return (
