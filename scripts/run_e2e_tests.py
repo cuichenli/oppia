@@ -248,10 +248,7 @@ def setup_and_install_dependencies(skip_install):
     setup.main(args=[])
     setup_gae.main(args=[])
     if os.getenv('TRAVIS'):
-        install_chrome_on_travis.main()
-
-
-
+        install_chrome_on_travis.main([])
 
 def build_js_files(dev_mode):
     """Build the javascript files.
