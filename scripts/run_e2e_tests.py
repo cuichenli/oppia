@@ -257,15 +257,15 @@ def build_js_files(dev_mode):
     if not dev_mode:
         python_utils.PRINT('  Generating files for production mode...')
     else:
-        p = subprocess.Popen([common.NODE_BIN_PATH, WEBPACK_BIN_PATH, '--config', 'webpack.dev.config.ts'], stderr=subprocess.PIPE, stdout=subprocess.PIPE)
-        out, err = p.communicate()
-        print '========OUT'
-        print out
-        print '========ERR'
-        print err
-        # common.run_cmd(
-        #     [common.NODE_BIN_PATH, WEBPACK_BIN_PATH, '--config',
-        #      'webpack.dev.config.ts'])
+        try:
+            common.run_cmd(
+                [common.NODE_BIN_PATH, WEBPACK_BIN_PATH, '--config',
+                 'webpack.dev.config.ts'])
+        except subprocess.CalledProcessError as e:
+            print e
+            print e.output
+            print e.returncode
+            sys.exit(1)
     build.main(args=(['--prod_env'] if not dev_mode else []))
 
 
